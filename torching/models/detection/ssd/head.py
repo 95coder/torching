@@ -18,7 +18,7 @@ class Head(nn.Module):
         targets: (batch_size, num_targets, 4 + num_classes)
         """
         predictions = self.multibox(features)
-        
+
         priors = self.priorbox_generator()
 
         if self.training:

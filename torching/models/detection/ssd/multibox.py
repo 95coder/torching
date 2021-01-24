@@ -1,6 +1,10 @@
 import torch
 from torch import nn
 
+from torching.models.detection.ssd.box import BoxCoder
+from torching.models.detection.ssd.box import cxcywh_to_xyxy
+from torching.models.detection.ssd.box import nms
+
 
 _multibox_cfg = [4, 6, 6, 6, 4, 4]  # 各尺度特征图的候选框的个数
 
@@ -69,13 +73,50 @@ class MultiBox(nn.Module):
 
 
 class BoxSelector(nn.Module):
-    def __init__(self, nms_threshold=0.5, top_k=400, confidence_threashold=0.5, keep_top_k=200):
+    def __init__(self, nms_threshold=0.5, top_k=400, confidence_threshold=0.5, keep_top_k=200):
         super().__init__()
+
         self.nms_threshold = nms_threshold
         self.top_k = top_k
-
-        self.confidence_threashold = confidence_threashold
+        self.confidence_threshold = confidence_threshold
         self.keep_top_k = keep_top_k
 
+        self.box_coder = BoxCoder()        
+
     def forward(self, predictions, priors):
-        return predictions
+        batch_size = predictions.size(0)
+        num_classes = 2
+
+        priorboxs = priors[:, :4]
+
+        outputs = torch.tensor([])
+
+        for b in range(batch_size):
+            pred_locs = predictions[b, :, :4]
+            pred_confs = predictions[b, :, 4:]
+            
+            pred_boxes = self.box_coder.decode(pred_locs, priorboxs)
+            
+            objs = torch.tensor([])
+            
+            scores, labels = torch.max(pred_confs, dim=1)
+
+            scores_gt_idxs = torch.where(scores > self.confidence_threshold)[0].view(-1)
+
+            boxes = pred_boxes[scores_gt_idxs, :4]
+            scores = scores[scores_gt_idxs]
+            labels = labels[scores_gt_idxs]
+
+            keep, count = nms(boxes, scores, self.nms_threshold, self.top_k)
+
+            objs = torch.cat([labels[keep].view(-1, 1), scores[keep].view(-1, 1), boxes[keep]], dim=1)
+
+            scores = objs[:, 1]
+            v, idx = scores.sort(0)
+            keep_idx = idx[:self.keep_top_k]
+
+            keep_objs = objs[keep_idx, :]
+
+            outputs = torch.cat([outputs, keep_objs.unsqueeze(0)], dim=0)
+
+        return outputs

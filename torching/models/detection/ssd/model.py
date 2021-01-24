@@ -54,12 +54,12 @@ def make_ssd(cfg):
                                  cfg.multibox_loss.neg_pos_ratio,
                                  cfg.multibox_loss.alpha)
                                  
-    priorbox_generator = PriorboxGenerator(cfg.input.image_size, 
-                                           cfg.priorbox.pyramid_sizes, 
-                                           cfg.priorbox.box_sizes,
+    priorbox_generator = PriorboxGenerator(cfg.priorbox.pyramid_sizes, 
+                                           cfg.priorbox.min_scale,
+                                           cfg.priorbox.max_scale,
                                            cfg.priorbox.aspect_ratios)
 
-    box_selector = BoxSelector(cfg.box_selector.nms_threshold, 
+    box_selector = BoxSelector(cfg.box_selector.nms_threshold,
                                cfg.box_selector.top_k, 
                                cfg.box_selector.confidence_threshold,
                                cfg.box_selector.keep_top_k)

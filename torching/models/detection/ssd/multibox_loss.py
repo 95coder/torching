@@ -3,17 +3,8 @@ from torch import nn
 import torch.nn.functional as F
 from scipy.optimize import linear_sum_assignment
 
-
-class BoxCoder:
-    def __init__(self):
-        """
-        box与参考box偏移变换!
-        """
-    def encode(self, box, reference_box):
-        return (box - reference_box) / reference_box
-
-    def decode(self, box, reference_box):
-        return (box + 1) * reference_box
+from torching.models.detection.ssd.box import BoxCoder
+from torching.models.detection.ssd.box import cxcywh_to_xyxy
 
 
 class MultiboxLoss(nn.Module):
@@ -43,14 +34,13 @@ class MultiboxLoss(nn.Module):
         N = loc_p.size(0)
         num_priors = loc_p.size(1)
         
-        # 匹配targets和priors，构建groundtruth
+        # 匹配targets和priors
         loc_t, conf_t = self._match_targets_and_priors(targets, priors, self.overlap_thresh) # (batch_size, num_priors, 4), (batch_size, num_priors)
 
         # groundtruth中大多数都是负样本, 还需要做困难样本挖掘（Hard Negative Mining）.
         # 方法是对confidence loss进行从小到大排序，选择top的neg_pos_ratio * num_pos个负样本.
         pred_probs = conf_p.view(-1, self.num_classes)
         target_labels = conf_t.flatten()
-
         loss_conf = F.cross_entropy(pred_probs, target_labels, reduce=False)  # probs为one-hot label, labels为ID
         loss_conf = loss_conf.view(N, -1)  # (batch_size, num_priors)
         _, sort_idx = loss_conf.sort(dim=1, descending=True)  # (batch_size, num_priors)
@@ -75,8 +65,8 @@ class MultiboxLoss(nn.Module):
         根据IOU，匹配targets和priors, 用匹配targets设置的prior的值以构建groundtruth.
 
         Returns:
-            loc_t: 位置groundtruth
-            conf_t: 分类groundtruth            
+            loc_t: 位置labels
+            conf_t: 分类labels            
         """
         batch_size = targets.size(0)
         num_priors = priors.size(0)
@@ -84,13 +74,16 @@ class MultiboxLoss(nn.Module):
         loc_t = priors.unsqueeze(0).repeat_interleave(batch_size, dim=0)  # (batch_size, num_priors, 4)
         conf_t = torch.zeros((batch_size, num_priors), dtype=torch.long)  # (batch_size, num_priors)
 
-        for idx in range(batch_size):
-            targetboxs = targets[idx, :, :4]  # (num_objs, 4)
-            targetlabels = targets[idx, :, 4:]  # (num_objs, num_classes)
-            matches = match(targetboxs, priors, overlap_thresh)
+        for b in range(batch_size):
+            targetboxs = targets[b, :, :4]  # (num_objs, 4)
+            targetlabels = targets[b, :, 4:]  # (num_objs, num_classes)
+            priorboxs = priors[:, :4]
+            xyxy_priorboxs = cxcywh_to_xyxy(priorboxs)
+
+            matches = match(targetboxs, xyxy_priorboxs, overlap_thresh)
             for i, j in matches:
-                loc_t[idx, j, :] = targetboxs[idx, i, :]
-                conf_t[idx, j] = torch.argmax(targetlabels[idx, i, :]).item()
+                loc_t[b, j, :] = self.box_coder.encode(targetboxs[i, :], priorboxs[j, :])
+                conf_t[b, j] = torch.argmax(targetlabels[i, :]).item()
 
         return loc_t, conf_t
 
@@ -103,22 +96,28 @@ class MultiboxLoss(nn.Module):
         return F.cross_entropy(pred_probs, target_labels, reduction='sum')
 
 
-def match(targetboxs, priorboxs, thresh=0):
-    # print('targetboxs.shape: ', targetboxs.shape)
-    # print('priorboxs.shape: ', priorboxs.shape)
+def match(targetboxs, priorboxs, overlap_thresh=0):
+    """
+    Args:
+        targetboxs: in [xmin, ymin, xmax, ymax]
+        priorboxs: in [xmin, ymin, xmax, ymax]
+    """
+
     iou = jaccard_iou(targetboxs, priorboxs)  # (N, M)
     indices = linear_sum_assignment(iou, maximize=True)
 
     matches = []
     for i, j in zip(indices[0], indices[1]):
-        if iou[i, j] > thresh:
+        if iou[i, j] > overlap_thresh:
             matches.append([i, j])
     return matches
 
 
 def jaccard_iou(targetboxs, priorboxs, eplison=1e-5):
     """
-    modified from `torchvision.ops.boxes.box_iou`.
+    Modified from `torchvision.ops.boxes.box_iou`.
+
+    targetboxs and priorboxs are in [xmin, ymin, xmax, ymax].
     """
     area1 = (targetboxs[:, 2:] - targetboxs[:, :2]).abs().prod(axis=1)  # (N,)
     area2 = (priorboxs[:, 2:] - priorboxs[:, :2]).abs().prod(axis=1)  # (M,)

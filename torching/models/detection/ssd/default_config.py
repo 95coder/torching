@@ -31,11 +31,13 @@ cfg.pyramid.layer_cfg = [
 ]
 
 cfg.head = CN()
-cfg.head.num_classes = 10
+cfg.head.num_classes = 2
 
 cfg.priorbox = CN()
 cfg.priorbox.pyramid_sizes = [38, 19, 10, 5, 3, 1]
-cfg.priorbox.box_sizes = [[30, 60], [60, 111], [111, 162], [162, 213], [213, 264], [264, 315]]
+# cfg.priorbox.pyramid_sizes = [64, 32, 16, 8, 4, 2, 1]
+cfg.priorbox.min_scale = 0.1
+cfg.priorbox.max_scale = 1.05
 cfg.priorbox.aspect_ratios = [[2], [2, 3], [2, 3], [2, 3], [2], [2]]
 
 cfg.multibox = CN()
@@ -47,7 +49,7 @@ cfg.multibox_loss.neg_pos_ratio = 3
 cfg.multibox_loss.alpha = 0.5
 
 cfg.box_selector = CN()
-cfg.box_selector.nms_threshold = 0.5
+cfg.box_selector.nms_threshold = 0.2
 cfg.box_selector.top_k = 400
 cfg.box_selector.confidence_threshold = 0.01
 cfg.box_selector.keep_top_k = 200
