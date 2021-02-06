@@ -19,10 +19,17 @@ class Head(nn.Module):
         targets: (batch_size, num_targets, 4 + num_classes)
         """
         predictions = self.multibox(features)
+        if self.training:
+            loss = self._loss_out(predictions, targets)
+            return loss
+        else:
+            det_out = self._detect_out(predictions)
+            return det_out
 
-        # if self.training:
+    def _loss_out(self, predictions, targets):
         loss = self.multibox_loss(predictions, targets, self.priors)
         return loss
-        # else:
-        #     detections = self.box_selector(predictions, self.priors)
-        # return detections
+
+    def _detect_out(self, predictions):
+        detections = self.box_selector(predictions, self.priors)
+        return detections

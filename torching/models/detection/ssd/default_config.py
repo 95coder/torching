@@ -60,3 +60,4 @@ cfg.train.batch_size = 32
 cfg.train.steps = (50, 75)
 cfg.train.gamma = 0.1
 cfg.train.learning_rate = 0.01
+cfg.train.cuda = False

@@ -5,10 +5,10 @@ from torching.layers.l2_norm import L2Norm
 
 from .backbones.vgg import make_backbone as make_vgg_backbone
 from .pyramid import Pyramid
-from .head import Head
 from .multibox import MultiBox
-from .multibox import BoxSelector
-from .priorbox import PriorboxGenerator
+from .head import Head
+from .priorbox_generator import PriorboxGenerator
+from .detection_out import DetectionOut
 from .multibox_loss import MultiboxLoss
 
 
@@ -54,16 +54,16 @@ def make_ssd(cfg):
                                  cfg.multibox_loss.neg_pos_ratio,
                                  cfg.multibox_loss.alpha)
                                  
-    priorbox_generator = PriorboxGenerator(cfg.priorbox.pyramid_sizes, 
+    priorbox_generator = PriorboxGenerator(cfg.priorbox.pyramid_sizes,
                                            cfg.priorbox.min_scale,
                                            cfg.priorbox.max_scale,
                                            cfg.priorbox.aspect_ratios)
 
-    box_selector = BoxSelector(cfg.box_selector.nms_threshold,
-                               cfg.box_selector.top_k, 
-                               cfg.box_selector.confidence_threshold,
-                               cfg.box_selector.keep_top_k)
+    detection_out = DetectionOut(cfg.box_selector.nms_threshold,
+                                 cfg.box_selector.top_k, 
+                                 cfg.box_selector.confidence_threshold,
+                                 cfg.box_selector.keep_top_k)
 
-    head = Head(multibox, multibox_loss, priorbox_generator, box_selector)
+    head = Head(multibox, multibox_loss, priorbox_generator, detection_out)
 
     return SSD(backbone, pyramid, head)

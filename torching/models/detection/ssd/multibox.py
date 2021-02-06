@@ -3,7 +3,6 @@ from torch import nn
 
 from torching.models.detection.ssd.box import BoxCoder
 from torching.models.detection.ssd.box import cxcywh_to_xyxy
-from torching.models.detection.ssd.box import nms
 
 
 _multibox_cfg = [4, 6, 6, 6, 4, 4]  # 各尺度特征图的候选框的个数
@@ -55,7 +54,6 @@ class MultiBox(nn.Module):
             loc_data.append(loc)
         loc_logits = torch.cat(loc_data, dim=1)
         loc_logits = loc_logits.view(loc.size(0), -1, 4)  # (batch_size, (38**2 * 4 + 19**2 * 6 + 10**2 * 6 + 5**2 * 6 + 3**2 * 4 + 1**2 * 4), 4) -> (batch_size, 8732, 4)
-        # print('loc_logits.shape: ', loc_logits.shape)
 
         conf_data = []
         for layer, feature in zip(self.conf_layers, features):
@@ -65,57 +63,6 @@ class MultiBox(nn.Module):
             conf_data.append(conf)
         conf_logits = torch.cat(conf_data, dim=1)
         conf_logits = conf_logits.view(loc.size(0), -1, self.num_classes)  # (batch_size, 8732, num_classes)
-        # print('conf_logits.shape: ', conf_logits.shape)
 
         logits = torch.cat((loc_logits, conf_logits), dim=-1)  # (batch_size, 8732, 4 + num_classes)
-        # print('logits.shape: ', logits.shape)
         return logits
-
-
-class BoxSelector(nn.Module):
-    def __init__(self, nms_threshold=0.5, top_k=400, confidence_threshold=0.5, keep_top_k=200):
-        super().__init__()
-
-        self.nms_threshold = nms_threshold
-        self.top_k = top_k
-        self.confidence_threshold = confidence_threshold
-        self.keep_top_k = keep_top_k
-
-        self.box_coder = BoxCoder()        
-
-    def forward(self, predictions, priors):
-        batch_size = predictions.size(0)
-        num_classes = 2
-
-        priorboxs = priors[:, :4]
-
-        outputs = torch.tensor([])
-
-        for b in range(batch_size):
-            pred_locs = predictions[b, :, :4]
-            pred_confs = predictions[b, :, 4:]
-            
-            pred_boxes = self.box_coder.decode(pred_locs, priorboxs)
-            
-            objs = torch.tensor([])
-            
-            scores, labels = torch.max(pred_confs, dim=1)
-
-            gt_idxs = torch.where(scores > self.confidence_threshold)[0].view(-1)
-            boxes = pred_boxes[gt_idxs, :4]
-            scores = scores[gt_idxs]
-            labels = labels[gt_idxs]
-
-            keep, count = nms(boxes, scores, self.nms_threshold, self.top_k)
-
-            objs = torch.cat([labels[keep].view(-1, 1), scores[keep].view(-1, 1), boxes[keep]], dim=1)
-
-            scores = objs[:, 1]
-            v, idx = scores.sort(0)
-            keep_idx = idx[:self.keep_top_k]
-
-            keep_objs = objs[keep_idx, :]
-
-            outputs = torch.cat([outputs, keep_objs.unsqueeze(0)], dim=0)
-
-        return outputs

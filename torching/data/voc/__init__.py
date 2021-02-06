@@ -33,7 +33,7 @@ class VOCDetectionDataset(torch.utils.data.Dataset):
     def __init__(self, data_dir, img_set, transfrom):
         self._imgs_dir = os.path.join(data_dir, 'JPEGImages')
         self._annos_dir = os.path.join(data_dir, 'Annotations')
-        self._imgsetidx_file = os.path.join(data_dir, 'ImageSets', 'Main', '%s.txt' % img_set)
+        self._imgsetidx_file = os.path.join(data_dir, 'ImageSets', 'Test', '%s.txt' % img_set)
 
         self.transfrom = transfrom
 
