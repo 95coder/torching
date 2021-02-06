@@ -11,7 +11,7 @@ class Head(nn.Module):
         self.multibox_loss = multibox_loss
         self.priorbox_generator = priorbox_generator
         self.box_selector = box_selector
-        self.priors = self.priorbox_generator()
+        self.priors = None
 
     def forward(self, features, targets=None):
         """
@@ -19,6 +19,13 @@ class Head(nn.Module):
         targets: (batch_size, num_targets, 4 + num_classes)
         """
         predictions = self.multibox(features)
+
+        if self.priors is None:
+            priors = self.priorbox_generator()
+            if predictions.is_cuda:
+                priors = priors.cuda()
+            self.priors = priors
+
         if self.training:
             loss = self._loss_out(predictions, targets)
             return loss

@@ -24,7 +24,9 @@ class DetectionOut(nn.Module):
 
         priorboxs = priors[:, :4]
 
-        outputs = torch.tensor([]).cuda()
+        outputs = torch.tensor([])
+        if predictions.is_cuda:
+            outputs = outputs.cuda()
 
         for b in range(batch_size):
             pred_locs = predictions[b, :, :4]

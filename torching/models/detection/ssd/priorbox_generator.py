@@ -10,7 +10,11 @@ def make_scales(min_scale, max_scale, num_pyramids):
 
 
 class PriorboxGenerator(nn.Module):
-    def __init__(self, pyramid_sizes, min_scale, max_scale, aspect_ratios):
+    def __init__(self,
+                 pyramid_sizes, 
+                 min_scale, 
+                 max_scale, 
+                 aspect_ratios):
         """
         先验框生成器.
 
@@ -59,7 +63,6 @@ class PriorboxGenerator(nn.Module):
         priorboxs = [torch.tensor(priorboxs_k) for priorboxs_k in priorboxs]
         priorboxs = torch.cat(priorboxs, dim=0).view(-1, 4)
         priorboxs.clamp_(min=0, max=1)
-        priorboxs = priorboxs.cuda()
         return priorboxs
                 
     def _make_box(self, cx, cy, scale, aspect_ratio):

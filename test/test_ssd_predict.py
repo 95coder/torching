@@ -12,10 +12,15 @@ def test_inference():
     cfg.head.num_classes = 2
     model = make_ssd(cfg)
 
-    model.train()
-    loss = model(images, targets)
-    print('loss: ', loss)
+    model.eval()
+    with torch.set_grad_enabled(False):
+        detect_out = model(images)
+        print('detect_out: ', detect_out)
+
+    # for name, layer in model.named_modules():
+    #     print(name, layer)
 
 
 if __name__ == "__main__":
-    pytest.main('-s', 'test_ssd_forward.py')
+    # test_inference()
+    pytest.main('-s', 'test_ssd_predict.py')

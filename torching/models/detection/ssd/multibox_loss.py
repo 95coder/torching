@@ -78,7 +78,9 @@ class MultiboxLoss(nn.Module):
 
         loc_t = priors.unsqueeze(0).repeat_interleave(batch_size, dim=0)  # (batch_size, num_priors, 4)
         conf_t = torch.zeros((batch_size, num_priors), dtype=torch.long)  # (batch_size, num_priors)
-        conf_t = conf_t.cuda()
+
+        if priors.is_cuda:
+            conf_t = conf_t.cuda()
 
         for b in range(batch_size):
             targetboxs = targets[b][:, :4]  # (num_objs, 4)
