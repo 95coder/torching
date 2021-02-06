@@ -11,6 +11,7 @@ class Head(nn.Module):
         self.multibox_loss = multibox_loss
         self.priorbox_generator = priorbox_generator
         self.box_selector = box_selector
+        self.priors = self.priorbox_generator()
 
     def forward(self, features, targets=None):
         """
@@ -19,11 +20,9 @@ class Head(nn.Module):
         """
         predictions = self.multibox(features)
 
-        priors = self.priorbox_generator()
-
-        if self.training:
-            loss = self.multibox_loss(predictions, targets, priors)
-            return loss
-        else:
-            detections = self.box_selector(predictions, priors)
-        return detections
+        # if self.training:
+        loss = self.multibox_loss(predictions, targets, self.priors)
+        return loss
+        # else:
+        #     detections = self.box_selector(predictions, self.priors)
+        # return detections

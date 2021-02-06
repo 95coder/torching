@@ -41,7 +41,7 @@ def train_classifer(model,
             running_corrects = 0
 
             for i, data in enumerate(dataloaders[phase], 0):
-                inputs , labels = data
+                inputs, labels = data
                 inputs = inputs.to(device)
                 labels = labels.to(device)
 

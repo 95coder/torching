@@ -8,9 +8,9 @@ cfg.model.pretrained = False
 cfg.model.weights_file = '/abc/def.pth'
 
 cfg.input = CN()
-cfg.input.image_size = [512, 512, 3]
+cfg.input.image_size = [300, 300]
 cfg.input.mean_value = [0.406, 0.456, 0.485]
-cfg.input.scale_value = [0.225, 0.225, 0.225]
+cfg.input.std_value = [0.225, 0.225, 0.225]
 
 cfg.backbone = CN()
 cfg.backbone.arch = 'vgg16'
@@ -31,7 +31,7 @@ cfg.pyramid.layer_cfg = [
 ]
 
 cfg.head = CN()
-cfg.head.num_classes = 2
+cfg.head.num_classes = 21
 
 cfg.priorbox = CN()
 cfg.priorbox.pyramid_sizes = [38, 19, 10, 5, 3, 1]

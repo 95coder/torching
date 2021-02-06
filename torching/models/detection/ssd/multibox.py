@@ -101,11 +101,10 @@ class BoxSelector(nn.Module):
             
             scores, labels = torch.max(pred_confs, dim=1)
 
-            scores_gt_idxs = torch.where(scores > self.confidence_threshold)[0].view(-1)
-
-            boxes = pred_boxes[scores_gt_idxs, :4]
-            scores = scores[scores_gt_idxs]
-            labels = labels[scores_gt_idxs]
+            gt_idxs = torch.where(scores > self.confidence_threshold)[0].view(-1)
+            boxes = pred_boxes[gt_idxs, :4]
+            scores = scores[gt_idxs]
+            labels = labels[gt_idxs]
 
             keep, count = nms(boxes, scores, self.nms_threshold, self.top_k)
 

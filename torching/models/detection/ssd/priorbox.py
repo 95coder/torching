@@ -58,6 +58,8 @@ class PriorboxGenerator(nn.Module):
         
         priorboxs = [torch.tensor(priorboxs_k) for priorboxs_k in priorboxs]
         priorboxs = torch.cat(priorboxs, dim=0).view(-1, 4)
+        priorboxs.clamp_(min=0, max=1)
+        priorboxs = priorboxs.cuda()
         return priorboxs
                 
     def _make_box(self, cx, cy, scale, aspect_ratio):

@@ -27,7 +27,7 @@ class MultiboxLoss(nn.Module):
         Returns:
             loss: 损失标量
         """
-        assert(predictions.size(0) == targets.size(0))
+        assert len(predictions) == len(targets)
 
         loc_p = predictions[:, :, :4]  # (batch_size, num_priors, 4)
         conf_p = predictions[:, :, 4:]   # (batch_size, num_priors, num_classes)
@@ -37,11 +37,16 @@ class MultiboxLoss(nn.Module):
         # 匹配targets和priors
         loc_t, conf_t = self._match_targets_and_priors(targets, priors, self.overlap_thresh) # (batch_size, num_priors, 4), (batch_size, num_priors)
 
+        # print('loc_p.device.type: ', loc_p.device.type)
+        # print('conf_p.device.type: ', conf_p.device.type)
+        # print('loc_t.device.type: ', loc_t.device.type)
+        # print('conf_t.device.type: ', conf_t.device.type)
+
         # groundtruth中大多数都是负样本, 还需要做困难样本挖掘（Hard Negative Mining）.
         # 方法是对confidence loss进行从小到大排序，选择top的neg_pos_ratio * num_pos个负样本.
         pred_probs = conf_p.view(-1, self.num_classes)
         target_labels = conf_t.flatten()
-        loss_conf = F.cross_entropy(pred_probs, target_labels, reduce=False)  # probs为one-hot label, labels为ID
+        loss_conf = F.cross_entropy(pred_probs, target_labels, reduce=False)
         loss_conf = loss_conf.view(N, -1)  # (batch_size, num_priors)
         _, sort_idx = loss_conf.sort(dim=1, descending=True)  # (batch_size, num_priors)
         sort_idx, _ = sort_idx.sort(dim=-1, descending=True)  # (batch_size, num_priors)
@@ -65,25 +70,27 @@ class MultiboxLoss(nn.Module):
         根据IOU，匹配targets和priors, 用匹配targets设置的prior的值以构建groundtruth.
 
         Returns:
-            loc_t: 位置labels
-            conf_t: 分类labels            
+            loc_t: 位置
+            conf_t: 类别        
         """
-        batch_size = targets.size(0)
+        batch_size = len(targets)
         num_priors = priors.size(0)
 
         loc_t = priors.unsqueeze(0).repeat_interleave(batch_size, dim=0)  # (batch_size, num_priors, 4)
         conf_t = torch.zeros((batch_size, num_priors), dtype=torch.long)  # (batch_size, num_priors)
+        conf_t = conf_t.cuda()
 
         for b in range(batch_size):
-            targetboxs = targets[b, :, :4]  # (num_objs, 4)
-            targetlabels = targets[b, :, 4:]  # (num_objs, num_classes)
+            targetboxs = targets[b][:, :4]  # (num_objs, 4)
+            targetlabels = targets[b][:, -1]  # (num_objs, 1)
+
             priorboxs = priors[:, :4]
             xyxy_priorboxs = cxcywh_to_xyxy(priorboxs)
 
             matches = match(targetboxs, xyxy_priorboxs, overlap_thresh)
             for i, j in matches:
                 loc_t[b, j, :] = self.box_coder.encode(targetboxs[i, :], priorboxs[j, :])
-                conf_t[b, j] = torch.argmax(targetlabels[i, :]).item()
+                conf_t[b, j] = targetlabels[i]
 
         return loc_t, conf_t
 
@@ -104,7 +111,7 @@ def match(targetboxs, priorboxs, overlap_thresh=0):
     """
 
     iou = jaccard_iou(targetboxs, priorboxs)  # (N, M)
-    indices = linear_sum_assignment(iou, maximize=True)
+    indices = linear_sum_assignment(iou.cpu(), maximize=True)
 
     matches = []
     for i, j in zip(indices[0], indices[1]):
