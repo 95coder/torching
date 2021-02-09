@@ -3,8 +3,8 @@ from torch import nn
 import torch.nn.functional as F
 from scipy.optimize import linear_sum_assignment
 
-from torching.models.detection.ssd.box import BoxCoder
-from torching.models.detection.ssd.box import cxcywh_to_xyxy
+from .box import BoxCoder
+from .box import cxcywh_to_xyxy
 
 
 class MultiboxLoss(nn.Module):

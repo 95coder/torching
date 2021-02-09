@@ -4,6 +4,7 @@ import time
 import copy
 import warnings
 import torch
+from collections import Sequence
 
 
 class AbcTrainer:
@@ -14,7 +15,6 @@ class AbcTrainer:
 class BaseTrainer(AbcTrainer):
     def __init__(self,
                  model,
-                 modeltag,
                  criterion=None,
                  metric_ops={},
                  optimizer=None,
@@ -23,12 +23,10 @@ class BaseTrainer(AbcTrainer):
                  num_epochs=None,
                  scheduler=None,
                  checkpointer=None,
-                 checkpoint_dir=None,
-                 checkpoint_period=None,
                  device=None,
+                 name=None,
                  logger=None):
         self.model = model
-        self.modeltag = modeltag
 
         self.optimizer = optimizer
         self.criterion = criterion
@@ -45,14 +43,20 @@ class BaseTrainer(AbcTrainer):
 
         self.num_epochs = num_epochs
         self.scheduler = scheduler
-        self.checkpoint_dir = checkpoint_dir
-        self.checkpoint_period = checkpoint_period
-        self.device = device
+        self.checkpointer = checkpointer
         
-        if logger is not None:
-            self.logger = logger
+        # 如果没有指定device, 使用model的所属的device
+        if device is None:
+            self.device = self.model.device
         else:
-            self.logger = logging.getLogger(self.modeltag or __name__)
+            self.device = device
+        
+        self.name = name
+        logger_name = 'Trainer.{}'.format(self.name) if self.name else 'Trainer'
+        self.logger = logger or logging.getLogger(logger_name)
+
+        if self.checkpointer is not None:
+            self.checkpointer.load(self.model)
 
     def __call__(self):
         since = time.time()
@@ -67,8 +71,16 @@ class BaseTrainer(AbcTrainer):
 
                 for i, data in enumerate(self.dataloaders[phase], 0):
                     inputs, targets = data
-                    inputs = inputs.to(self.device)
-                    targets = [target.to(self.device) for target in targets]
+                    
+                    if isinstance(inputs, Sequence):
+                        inputs = [input.to(self.device) for input in inputs]
+                    else:
+                        inputs = inputs.to(self.device)
+
+                    if isinstance(targets, Sequence):
+                        targets = [target.to(self.device) for target in targets]
+                    else:
+                        targets = targets.to(self.device)
 
                     if phase == 'train':
                         self.model.train()
@@ -100,7 +112,10 @@ class BaseTrainer(AbcTrainer):
                     if epoch_loss < self.best_loss:
                         self.best_loss = epoch_loss
                         self.best_model_wts = copy.deepcopy(self.model.state_dict())
-        
+
+            if self.checkpointer is not None:
+                self.checkpointer.save(self.model.state_dict())
+
         time_elapsed = time.time() - since
         self.logger.info('Training completed. Time Cost: {:.0f}m {:0f}s'.format(
             time_elapsed // 60, time_elapsed % 60))
@@ -109,15 +124,6 @@ class BaseTrainer(AbcTrainer):
             self.logger.info('Best Validation Loss: {:.4f}'.format(self.best_loss))
 
         best_model_wts = self.best_model_wts or self.model.state_dict()
-        self._save_checkpoint_for_state_dict(best_model_wts)
 
-    def _save_checkpoint_for_state_dict(self, state_dict):
-        if not os.path.exists(self.checkpoint_dir):
-            os.mkdir(self.checkpoint_dir)
-
-        if not os.path.isdir(self.checkpoint_dir):
-            self.logger.warning('The checkpoint save directory is invalid')
-        
-        filepath = os.path.join(self.checkpoint_dir,
-                                '{}.pth.{}'.format(self.modeltag, int(time.time() * 1000)))
-        torch.save(state_dict, filepath)
+        if self.checkpointer is not None:
+            self.checkpointer.save(best_model_wts, ignore_period=True)

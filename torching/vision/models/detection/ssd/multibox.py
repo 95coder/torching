@@ -1,8 +1,7 @@
 import torch
 from torch import nn
 
-from torching.models.detection.ssd.box import BoxCoder
-from torching.models.detection.ssd.box import cxcywh_to_xyxy
+from .box import BoxCoder
 
 
 _multibox_cfg = [4, 6, 6, 6, 4, 4]  # 各尺度特征图的候选框的个数

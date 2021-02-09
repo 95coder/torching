@@ -33,7 +33,7 @@ class VOCDetectionDataset(torch.utils.data.Dataset):
     def __init__(self, data_dir, img_set, transfrom):
         self._imgs_dir = os.path.join(data_dir, 'JPEGImages')
         self._annos_dir = os.path.join(data_dir, 'Annotations')
-        self._imgsetidx_file = os.path.join(data_dir, 'ImageSets', 'Test', '%s.txt' % img_set)
+        self._imgsetidx_file = os.path.join(data_dir, 'ImageSets', 'Main', '%s.txt' % img_set)
 
         self.transfrom = transfrom
 
@@ -62,23 +62,22 @@ class VOCDetectionDataset(torch.utils.data.Dataset):
             bbox = [xmin, ymin, xmax, ymax]  # in xyxy format
             label = self.CLASSES.index(name)
             targets.append(bbox + [label])
-        
-        img = self.transfrom(img)
-        target = torch.tensor(targets)
-        return img, target
+        targets = torch.tensor(targets)
+        img, targets = self.transfrom(img, targets)
+        return img, targets
 
     def __len__(self):
         return len(self._idxs)
 
-
-def data_collate_fn(batch):
-    imgs = []
-    targets = []
-    for sample in batch:
-        img, target = sample
-        targets.append(target)
-        imgs.append(img)
-    return torch.stack(imgs, 0), targets
+    @staticmethod
+    def collate_fn(batch):
+        imgs = []
+        targets = []
+        for sample in batch:
+            img, target = sample
+            targets.append(target)
+            imgs.append(img)
+        return torch.stack(imgs, 0), targets
 
 
 if __name__ == '__main__':

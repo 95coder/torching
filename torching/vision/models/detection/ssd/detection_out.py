@@ -1,7 +1,8 @@
 import torch
 from torch import nn
-from torching.models.detection.ssd.box import nms
-from torching.models.detection.ssd.box import BoxCoder
+
+from .box import nms
+from .box import BoxCoder
 
 
 class DetectionOut(nn.Module):

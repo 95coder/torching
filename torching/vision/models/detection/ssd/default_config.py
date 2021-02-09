@@ -12,6 +12,40 @@ cfg.input.image_size = [300, 300]
 cfg.input.mean_value = [0.406, 0.456, 0.485]
 cfg.input.std_value = [0.225, 0.225, 0.225]
 
+cfg.input.augment = CN()
+
+cfg.input.augment.random_expand = CN()
+cfg.input.augment.random_expand.prob = 0.0
+cfg.input.augment.random_expand.max_ratio = 0.0
+cfg.input.augment.random_expand.fill_value = 0.0
+cfg.input.augment.random_expand.keep_ratio = True
+
+cfg.input.augment.random_crop = CN()
+cfg.input.augment.random_crop.prob = 0.0
+cfg.input.augment.random_crop.ratios = [0.1, 0.2]
+cfg.input.augment.random_crop.fill_value = 0.0
+
+cfg.input.augment.random_rotate = CN()
+cfg.input.augment.random_rotate.prob = 0.0
+cfg.input.augment.random_rotate.degrees = []
+cfg.input.augment.random_rotate.fill_value = 0.0
+
+cfg.input.augment.random_affine = CN()
+cfg.input.augment.random_affine.prob = 0.0
+cfg.input.augment.random_affine.degrees = []
+
+cfg.input.augment.random_horizontal_flip = CN()
+cfg.input.augment.random_horizontal_flip.prob = 0.0
+
+cfg.input.augment.random_vertical_flip = CN()
+cfg.input.augment.random_vertical_flip.prob = 0.0
+
+cfg.input.augment.color_jitter = CN()
+cfg.input.augment.color_jitter.brightness = 0.0
+cfg.input.augment.color_jitter.contrast = 0.0
+cfg.input.augment.color_jitter.saturation = 0.0
+cfg.input.augment.color_jitter.hue = 0.0
+
 cfg.backbone = CN()
 cfg.backbone.arch = 'vgg16'
 cfg.backbone.in_channels = 3

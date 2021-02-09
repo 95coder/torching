@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-from torching.layers.l2_norm import L2Norm
+from torching.common.ops.l2_norm import L2Norm
 
 from .backbones.vgg import make_backbone as make_vgg_backbone
 from .pyramid import Pyramid
