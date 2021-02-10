@@ -1,6 +1,6 @@
 from .temp import *
 
-"""
+
 T.ToTensor
 T.ToPILImage
 T.Normalize
@@ -25,4 +25,3 @@ T.RandomAffine
 T.Grayscale
 T.RandomGrayscale
 T.RandomPerspective
-"""

@@ -21,6 +21,9 @@ class TestBoxList:
     def test_expand(self):
         assert self.bl1.allclose(self.bl1.expand([2, 2, 2, 2]).expand([0.5, 0.5, 0.5, 0.5]).to())
 
+    def test_rotate90(self):
+        print('self.bl1.rotate90(): ', self.bl1.rotate90())
+
 
 if __name__ == '__main__':
     pytest.main(['-s', 'test_boxlist.py'])
