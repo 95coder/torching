@@ -48,6 +48,14 @@ class BoxList:
             return BoxList(data, self.img_size, mode='xywh')
         return self.clone()
 
+    def split_into_pts(self):
+        data = self.xyxy().data
+        xmin, ymin, xmax, ymax = data.split(1, dim=-1)
+        return (torch.cat([xmin, ymin], dim=-1), 
+                torch.cat([xmax, ymin], dim=-1), 
+                torch.cat([xmax, ymax], dim=-1), 
+                torch.cat([xmin, ymax], dim=-1))
+
     def absolute_coords(self):
         if self.mode == 'xyxy' and not self.absolute:
             data = self.data.clone()
@@ -210,15 +218,7 @@ class BoxList:
 
             return points.mm(M[:2, :2].T) + M[:2, -1].T
 
-        def transform_boxes(boxes, M):
-            if boxes.ndim == 1:
-                boxes = boxes.unsqueeze(dim=0)
-
-            boxes = torch.cat([transform_points(boxes[:, :2], M),
-                               transform_points(boxes[:, 2:], M)], dim=-1)
-            return boxes
-
-        def get_out_box(points):
+        def find_bounding_box_for_contour_pts(points):
             xmin = points[:, 0].min()
             xmax = points[:, 0].max()
             ymin = points[:, 1].min()
@@ -226,9 +226,26 @@ class BoxList:
             box = torch.as_tensor([xmin, ymin, xmax, ymax], dtype=torch.float32, device=points.device)
             return box
 
-        img_w, img_h = self.img_size
-        boxes = self.xyxy().data
+        def find_bounding_boxes_for_boxes_in_pts(boxes_in_pts):
+            xmin, _ = boxes_in_pts[:, 0::2].min(dim=-1, keepdim=True)
+            xmax, _ = boxes_in_pts[:, 0::2].max(dim=-1, keepdim=True)
+            ymin, _ = boxes_in_pts[:, 1::2].min(dim=-1, keepdim=True)
+            ymax, _ = boxes_in_pts[:, 1::2].max(dim=-1, keepdim=True)
 
+            boxes = torch.cat([xmin, ymin, xmax, ymax], dim=-1)
+            return boxes
+        
+        img_w, img_h = self.img_size
+
+        # Get the image grid corners.
+        if self.absolute:
+            img_corners = torch.as_tensor([[0, 0], [img_w, 0], [img_w, img_h], [0, img_h]],
+                                          dtype=torch.float32, device=self.device)
+        else:
+            img_corners = torch.as_tensor([[0, 0], [1, 0], [1, 1], [0, 1]],
+                                          dtype=torch.float32, device=self.device)
+
+        # Make a affine transformation matrix.
         if center is None:
             center = torch.as_tensor([0, 0], dtype=torch.float32, device=self.device)
 
@@ -237,24 +254,25 @@ class BoxList:
         M[0, 2] = affined_center[0, 0]
         M[1, 2] = affined_center[0, 1]
 
-        affined_boxes = transform_boxes(boxes, M)
-        
-        if self.absolute:
-            img_corners = torch.as_tensor([[0, 0], [img_w, 0], [img_w, img_h], [0, img_h]],
-                                          dtype=torch.float32, device=self.device)
-        else:
-            img_corners = torch.as_tensor([[0, 0], [1, 0], [1, 1], [0, 1]],
-                                          dtype=torch.float32, device=self.device)
-        
-        print('\naffined_boxes:\n', affined_boxes)
-        print('\nimg_corners:\n', img_corners)
+        # Get the transformed img grid.
+        # print('\nimg_corners:\n', img_corners)
         affined_img_corners = transform_points(img_corners, M)
-        print('\naffined_img_corners:\n', affined_img_corners)
-        affined_img_grid = get_out_box(affined_img_corners)
+        # print('\naffined_img_corners:\n', affined_img_corners)
+        affined_img_grid = find_bounding_box_for_contour_pts(affined_img_corners)
+        # print('\naffined_img_grid:\n', affined_img_grid)
+
+        # Do transformation for box corner points, then find the bounding boxes of the transformed points.
+        boxes_in_pts = self.split_into_pts()
+        affined_boxes_in_pts = []
+        for boxes_pts in boxes_in_pts:
+            affined_boxes_in_pts.append(transform_points(boxes_pts, M))
+        affined_boxes_in_pts = torch.cat(affined_boxes_in_pts, dim=-1)
+        affined_boxes = find_bounding_boxes_for_boxes_in_pts(affined_boxes_in_pts)
+
+        # Translate the boxes to new image grid.
+        print('\naffined_boxes:\n', affined_boxes)
         affined_boxes[:, [0, 2]] -= affined_img_grid[0]
         affined_boxes[:, [1, 3]] -= affined_img_grid[1]
-        print('\naffined_img_grid:\n', affined_img_grid)
-
         print('\naffined_boxes:\n', affined_boxes)
 
         affined_img_w = (affined_img_grid[2] - affined_img_grid[0]).int().item()
