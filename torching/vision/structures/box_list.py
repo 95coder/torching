@@ -174,25 +174,6 @@ class BoxList:
             obj = obj.xywh()
         return obj
 
-    # def rotate90(self):
-    #     def gen_rotate_mat(theta):
-    #         M = [[np.cos(theta), np.sin(theta)], [-np.sin(theta), np.cos(theta)]]
-    #         return torch.as_tensor(M, dtype=torch.float32, device=self.device)
-
-    #     img_w, img_h = self.img_size
-    #     data = self.xyxy().data
-
-    #     ratate_mat = gen_rotate_mat(np.pi / 2.0)
-    #     data[:, 1::2] = img_h - data[:, 1::2]
-    #     data = torch.cat([ratate_mat.mm(data[:, :2].T),
-    #                       ratate_mat.mm(data[:, 2:].T)], dim=0).T
-    #     data[:, 1::2] *= -1
-
-    #     obj = BoxList(data, (img_h, img_w), absolute=self.absolute)
-    #     if self.mode == 'xywh':
-    #         obj = obj.xywh()
-    #     return obj
-
     def rotate90(self, center=None):
         return self.rotate(90, center)
 
@@ -270,10 +251,10 @@ class BoxList:
         affined_boxes = find_bounding_boxes_for_boxes_in_pts(affined_boxes_in_pts)
 
         # Translate the boxes to new image grid.
-        print('\naffined_boxes:\n', affined_boxes)
+        # print('\naffined_boxes:\n', affined_boxes)
         affined_boxes[:, [0, 2]] -= affined_img_grid[0]
         affined_boxes[:, [1, 3]] -= affined_img_grid[1]
-        print('\naffined_boxes:\n', affined_boxes)
+        # print('\naffined_boxes:\n', affined_boxes)
 
         affined_img_w = (affined_img_grid[2] - affined_img_grid[0]).int().item()
         affined_img_h = (affined_img_grid[3] - affined_img_grid[1]).int().item()
