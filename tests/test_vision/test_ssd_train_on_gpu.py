@@ -6,13 +6,11 @@ from torch.utils.data import DataLoader
 
 from torching.vision.models.detection.ssd.model import make_ssd
 from torching.vision.models.detection.ssd.default_config import cfg
-from torching.vision.data.voc import VOCDetectionDataset
+from torching.vision.datasets.voc import VOCDetectionDataset
+from torching.vision import transforms as T
 from torching.common.utils.trainer import BaseTrainer
 from torching.common.utils.checkpointer import CheckPointer
 from torching.common.utils.logger import FMT_TNLM
-
-
-import torching.vision.transforms as T
 
 
 logging.basicConfig(level=logging.INFO, format=FMT_TNLM)

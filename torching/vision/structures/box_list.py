@@ -2,6 +2,8 @@ import torch
 import numpy as np
 import math
 
+# from torching.vision.utils.img_process import get_affine_matrix
+
 
 class BoxList:
     def __init__(self,
@@ -33,6 +35,19 @@ class BoxList:
                    other.mode,
                    other.absolute,
                    other.device)
+
+    def clone(self):
+        return self.create_like(self)
+
+    def to(self, device=None):
+        if device != self.data.device:
+            return self.data.to(device=device)
+        return self.data
+
+    def to_tensor(self, dtype=None):
+        if dtype is None:
+            return self.data
+        return self.data.type(dtype=dtype)
 
     def xyxy(self):
         if self.mode == 'xywh':
@@ -79,14 +94,6 @@ class BoxList:
             data[:, [0, 1]] /= self.img_size[0]
             data[:, [2, 3]] /= self.img_size[1]
             return BoxList(data, self.img_size, mode='xywh', absolute=False)
-
-    def clone(self):
-        return self.create_like(self)
-
-    def to(self, device=None):
-        if device != self.data.device:
-            return self.data.to(device)
-        return self.data
 
     def resize(self, size):
         data = self.xyxy().data
@@ -180,24 +187,28 @@ class BoxList:
     def rotate(self, angle, center=None):
         return self.affine(angle)
 
-    def affine(self, angle, translate=None, center=None):
-        angle = angle % 360
-        angle = math.radians(angle)
+    def affine(self, angle, center=None, translate=None, scale=1, shear=None):
+        def transform_points(points, M):
+            if points.ndim == 1:
+                points = points.unsqueeze(dim=0)
+            return points.mm(M[:2, :2].T) + M[:2, -1].T
 
-        def get_affine_mat_in_pixel_grid(theta):
+        def get_affine_matrix(center, angle, translate, scale, shear):
             """
             Notes: In the image pixel coordinate, the transformation is:
                 x_ = cos(theta) * x - sin(theta) * y
                 y_ = sin(theta) * x + cos(theta) * y
             """
-            M = [[np.cos(theta), -np.sin(theta), 0], [np.sin(theta), np.cos(theta), 0]]
-            return torch.as_tensor(M, dtype=torch.float32, device=self.device)
+            angle = angle % 360
+            angle = math.radians(angle)
+            M = [[np.cos(angle), np.sin(angle), 0], [-np.sin(angle), np.cos(angle), 0]]
+            M = torch.as_tensor(M, dtype=torch.float32, device=self.device)
+            M.mul_(scale)
 
-        def transform_points(points, M):
-            if points.ndim == 1:
-                points = points.unsqueeze(dim=0)
-
-            return points.mm(M[:2, :2].T) + M[:2, -1].T
+            affined_center = transform_points(center + translate, M)
+            M[0, 2] = center[0] - affined_center[0, 0]
+            M[1, 2] = center[1] - affined_center[0, 1]
+            return M
 
         def find_bounding_box_for_contour_pts(points):
             xmin = points[:, 0].min()
@@ -226,14 +237,18 @@ class BoxList:
             img_corners = torch.as_tensor([[0, 0], [1, 0], [1, 1], [0, 1]],
                                           dtype=torch.float32, device=self.device)
 
-        # Make a affine transformation matrix.
         if center is None:
-            center = torch.as_tensor([0, 0], dtype=torch.float32, device=self.device)
+            center = (0.5, 0.5)
+        center = tuple(center)
+        center = torch.as_tensor([center[0] * img_w, center[1] * img_h], dtype=torch.float32, device=self.device)
 
-        M = get_affine_mat_in_pixel_grid(angle)
-        affined_center = transform_points(-center, M)
-        M[0, 2] = affined_center[0, 0]
-        M[1, 2] = affined_center[0, 1]
+        if translate is None:
+            translate = (0, 0)
+        translate = tuple(translate)
+        translate = torch.as_tensor([translate[0] * img_w, translate[1] * img_h], dtype=torch.float32, device=self.device)
+
+        # Make a affine transformation matrix.
+        M = get_affine_matrix(center, angle, translate, scale, shear)
 
         # Get the transformed img grid.
         # print('\nimg_corners:\n', img_corners)
@@ -252,10 +267,9 @@ class BoxList:
 
         # Translate the boxes to new image grid.
         # print('\naffined_boxes:\n', affined_boxes)
-        affined_boxes[:, [0, 2]] -= affined_img_grid[0]
-        affined_boxes[:, [1, 3]] -= affined_img_grid[1]
+        # affined_boxes[:, [0, 2]] -= affined_img_grid[0]
+        # affined_boxes[:, [1, 3]] -= affined_img_grid[1]
         # print('\naffined_boxes:\n', affined_boxes)
-
         affined_img_w = (affined_img_grid[2] - affined_img_grid[0]).int().item()
         affined_img_h = (affined_img_grid[3] - affined_img_grid[1]).int().item()
 
@@ -266,7 +280,7 @@ class BoxList:
     
     def iou(self, other):
         boxes1 = self.xyxy().data
-        boxes2 = other.xyxy().data.to(self.device)
+        boxes2 = other.xyxy().to(self.device).data
 
         area1 = (boxes1[:, 2:] - boxes1[:, :2]).prod(dim=-1)
         area2 = (boxes2[:, 2:] - boxes2[:, :2]).prod(dim=-1)
@@ -292,4 +306,4 @@ class BoxList:
     def allclose(self, other):
         assert isinstance(other, BoxList)
         assert self.data.shape == other.data.shape
-        return torch.allclose(self.to(), other.to(self.device))
+        return torch.allclose(self.data, other.to(self.device).data)

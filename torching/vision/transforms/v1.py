@@ -53,7 +53,7 @@ class BaseImageTargetTransform(object):
         raise TypeError('Not support transform from `{}`'.format(type(image)))
 
     def process_target(self, target):
-        raise target
+        return target
 
 
 class ToTensor(BaseImageTargetTransform):
@@ -67,7 +67,6 @@ class ToTensor(BaseImageTargetTransform):
             return image
         elif image.dtype == torch.uint8:
             return image.float().div(255)
-
 
     def process_pil_image(self, image):
         return F.to_tensor(image)
@@ -148,9 +147,9 @@ class Normalize(BaseImageTargetTransform):
         return (image - mean) / std
 
 
-class ImageResize(BaseImageTargetTransform):
+class Resize(BaseImageTargetTransform):
     def __init__(self, size):
-        self.size = size
+        self.size = tuple(size)
 
     def process_numpy_image(self, image):
         return cv2.resize(image, self.size, interpolation=None)
@@ -299,6 +298,11 @@ class Affine(BaseImageTargetTransform):
         image = img_process.numpy_image_affine_transform(image, affine_mat, self.fillcolor)
         return image
 
+    def process_target(self, target):
+        if isinstance(target, BoxList):
+            target = target.affine(self.angle, self.center, self.translate, self.scale, self.shear)
+        return target
+
 
 class RandomAffine(object):
     center_range = [0.2, 0.8]
@@ -358,6 +362,11 @@ class Rotate(BaseImageTargetTransform):
         affine_mat = img_process.get_affine_matrix(center, self.angle, [0, 0], 1.0, [0, 0])
         image =  img_process.pil_image_affine_transform(image, affine_mat, self.fillcolor)
         return image
+
+    def process_target(self, target):
+        if isinstance(target, BoxList):
+            target = target.rotate(self.angle, self.center)
+        return target
 
 
 class RandomRotate(BaseImageTargetTransform):
