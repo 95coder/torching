@@ -8,7 +8,7 @@ import cv2
 from torchvision import transforms as T
 from torchvision.transforms import functional as F
 
-from torching.vision.structures.box_list import BoxList
+from torching.vision.structures import BoxList
 from torching.vision.utils import img_process
 
 

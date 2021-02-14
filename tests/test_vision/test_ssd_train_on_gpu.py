@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader
 
 from torching.vision.models.detection.ssd.model import make_ssd
 from torching.vision.models.detection.ssd.default_config import cfg
-from torching.vision.datasets.voc import VOCDetectionDataset
+from torching.vision.datasets.voc import VOC2007DetectionDataset
 from torching.vision import transforms as T
 from torching.common.utils.trainer import BaseTrainer
 from torching.common.utils.checkpointer import CheckPointer
@@ -54,18 +54,18 @@ def test_train():
     #     ),
     # ])
     
-    # train_dataset = VOCDetectionDataset('/data2/dataset/VOC/VOC2007', 'train', transform)
-    # val_dataset =  VOCDetectionDataset('/data2/dataset/VOC/VOC2007', 'val', transform)
+    # train_dataset = VOC2007DetectionDataset('/data2/dataset/VOC/VOC2007', 'train', transform)
+    # val_dataset =  VOC2007DetectionDataset('/data2/dataset/VOC/VOC2007', 'val', transform)
 
-    train_dataset = VOCDetectionDataset('//data/datasets/images/VOC/VOCdevkit/VOC2007', 'train', transform)
-    val_dataset =  VOCDetectionDataset('/data/datasets/images/VOC/VOCdevkit/VOC2007', 'val', transform)
+    train_dataset = VOC2007DetectionDataset('/data/datasets/images/VOC/VOCdevkit/VOC2007', 'train', transform)
+    val_dataset =  VOC2007DetectionDataset('/data/datasets/images/VOC/VOCdevkit/VOC2007', 'val', transform)
 
     # Data loader
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, 
-                                  shuffle=True, collate_fn=VOCDetectionDataset.collate_fn)
+                                  shuffle=True, collate_fn=VOC2007DetectionDataset.collate_fn)
 
     val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, 
-                                collate_fn=VOCDetectionDataset.collate_fn)
+                                collate_fn=VOC2007DetectionDataset.collate_fn)
 
     checkpointer = CheckPointer('ssd', '/data/models/ssd')
 

@@ -2,10 +2,39 @@ import torch
 import numpy as np
 import math
 
-# from torching.vision.utils.img_process import get_affine_matrix
+from .image_object import ImageObject
 
 
-class BoxList:
+class Box(ImageObject):
+    def __init__(self, box, label=None, score=None, properties=None):
+        self.box = box
+        self.label = label
+        self.score = score
+        self.properties = properties
+
+
+class BoxTarget(ImageObject):
+    def __init__(self, box_list, labels, device=None):
+        labels = torch.as_tensor(labels, dtype=torch.float32, device=device)
+        assert box_list.total() == len(labels)
+
+        self.box_list = box_list.to(device)
+        self.labels = labels 
+    
+    def to(self, device=None):
+        box_list = self.box_list.to(device)
+        labels = self.labels.to(device)
+        return BoxTarget(box_list, labels, device=device)
+
+    def to_tensor(self):
+        boxes = self.box_list.percent_coords().to_tensor().view(-1, 4)
+        labels = self.labels.view(-1, 1)
+
+        tensor = torch.cat([boxes, labels], dim=-1)
+        return tensor
+
+        
+class BoxList(ImageObject):
     def __init__(self,
                  data,
                  img_size,
@@ -40,9 +69,13 @@ class BoxList:
         return self.create_like(self)
 
     def to(self, device=None):
-        if device != self.data.device:
-            return self.data.to(device=device)
-        return self.data
+        if device is not None and device != self.device:
+            return BoxList(self.data.to(device=device),
+                           self.img_size,
+                           self.mode,
+                           self.absolute,
+                           device)
+        return self
 
     def to_tensor(self, dtype=None):
         if dtype is None:
@@ -94,6 +127,9 @@ class BoxList:
             data[:, [0, 1]] /= self.img_size[0]
             data[:, [2, 3]] /= self.img_size[1]
             return BoxList(data, self.img_size, mode='xywh', absolute=False)
+
+    def total(self):
+        return self.data.size(0)
 
     def resize(self, size):
         data = self.xyxy().data

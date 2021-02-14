@@ -4,13 +4,13 @@ import math
 
 
 class Head(nn.Module):
-    def __init__(self, multibox, multibox_loss, priorbox_generator, box_selector):
+    def __init__(self, multibox, multibox_loss, priorbox_generator, detection_out):
         super().__init__()
 
         self.multibox = multibox
         self.multibox_loss = multibox_loss
         self.priorbox_generator = priorbox_generator
-        self.box_selector = box_selector
+        self.detection_out = detection_out
         self.priors = None
 
     def forward(self, features, targets=None):
@@ -38,5 +38,5 @@ class Head(nn.Module):
         return loss
 
     def _detect_out(self, predictions):
-        detections = self.box_selector(predictions, self.priors)
+        detections = self.detection_out(predictions, self.priors)
         return detections

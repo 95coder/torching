@@ -1,4 +1,4 @@
-from torching.vision.structures.box_list import BoxList
+from torching.vision.structures import BoxList
 import pytest
 import torch
 
@@ -24,10 +24,8 @@ class TestBoxList:
         assert self.bl1.allclose(temp)
 
     def test_rotate90(self):
-        temp = self.bl1.rotate(270)
-        # print('temp: ', temp)
-        # assert self.bl1.allclose(temp)
-        # print('self.bl1.rotate90(): ', self.bl1.rotate90())
+        temp = self.bl1.rotate(30).rotate(-30)
+        assert self.bl1.allclose(temp)
 
 
 if __name__ == '__main__':
