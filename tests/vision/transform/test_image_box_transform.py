@@ -12,7 +12,7 @@ from torching.vision.utils.visualize import BoxListDisplay
 from torchvision import transforms as T2
 
 
-data_dir = os.path.join(os.path.dirname(__file__), '../../data')
+data_dir = os.path.join(os.path.dirname(__file__), '../../../data')
 
 
 class TestImageBoxTransformVisualization(object):

@@ -4,13 +4,13 @@ from torch import optim
 from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader
 
+from torching.common.utils.trainer import BaseTrainer
+from torching.common.utils.checkpointer import CheckPointer
+from torching.common.utils.logger import FMT_TNLM
 from torching.vision.models.detection.ssd.model import make_ssd
 from torching.vision.models.detection.ssd.default_config import cfg
 from torching.vision.datasets.voc import VOC2007DetectionDataset
 from torching.vision import transforms as T
-from torching.common.utils.trainer import BaseTrainer
-from torching.common.utils.checkpointer import CheckPointer
-from torching.common.utils.logger import FMT_TNLM
 
 
 logging.basicConfig(level=logging.INFO, format=FMT_TNLM)
@@ -56,7 +56,6 @@ def test_train():
     
     # train_dataset = VOC2007DetectionDataset('/data2/dataset/VOC/VOC2007', 'train', transform)
     # val_dataset =  VOC2007DetectionDataset('/data2/dataset/VOC/VOC2007', 'val', transform)
-
     train_dataset = VOC2007DetectionDataset('/data/datasets/images/VOC/VOCdevkit/VOC2007', 'train', transform)
     val_dataset =  VOC2007DetectionDataset('/data/datasets/images/VOC/VOCdevkit/VOC2007', 'val', transform)
 

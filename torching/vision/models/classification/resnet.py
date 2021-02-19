@@ -14,13 +14,6 @@ def conv3x3(in_channels, out_channels, stride=1, dilation=1):
                      stride=stride, padding=1, bias=False, dilation=dilation)
 
 
-def conv1x1_downsample(in_channels, out_channels, stride=1):
-    return nn.Sequential(
-        conv1x1(in_channels, out_channels, stride=stride),
-        nn.BatchNorm2d(out_channels)
-    )
-
-
 class ResidualBlock(nn.Module):
     def __init__(self, in_channels, out_channels, stride=1, downsample=None):
         super().__init__()
@@ -114,10 +107,13 @@ class ResNet(nn.Module):
     def _make_blocks(block_cls, num_blocks, in_channels, out_channels, stride=1):
         blocks = []
         
-        dawnsample = None
+        channel_downsample = None
         if (stride != 1) or (in_channels != out_channels):
-            dawnsample = conv1x1_downsample(in_channels, out_channels, stride=stride)
-        blocks.append(block_cls(in_channels, out_channels, stride=stride, downsample=dawnsample))
+            channel_downsample = nn.Sequential(
+                conv1x1(in_channels, out_channels, stride=stride),
+                nn.BatchNorm2d(out_channels)
+            )
+        blocks.append(block_cls(in_channels, out_channels, stride=stride, downsample=channel_downsample))
 
         for _ in range(1, num_blocks):
             blocks.append(block_cls(out_channels, out_channels))

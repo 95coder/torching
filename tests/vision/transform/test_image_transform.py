@@ -7,7 +7,7 @@ from torching.vision import transforms as T
 from torching.vision.structures import BoxList
 
 
-data_dir = os.path.join(os.path.dirname(__file__), '../../data')
+data_dir = os.path.join(os.path.dirname(__file__), '../../../data')
 
 
 class TestImageTransform:
